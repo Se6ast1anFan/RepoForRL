@@ -24,8 +24,8 @@ from kaiwu_agent.agent.base_agent import (
     learn_wrapper,
     save_model_wrapper,
     load_model_wrapper,
-    reset_wrapper,
-    load_opponent_agent_wrapper,
+    # reset_wrapper,
+    # load_opponent_agent_wrapper,
 )
 
 from agent_ppo.conf.conf import Config
@@ -90,7 +90,7 @@ class Agent(BaseAgent):
         else:
             return 1.0 - ((1.0 - self.target_lr / self.lr) * step / self.target_step)
 
-    @reset_wrapper
+    # @reset_wrapper
     def reset(self, observation):
         # Reset function, called at the beginning of each episode
         # 重置函数，每局开始时调用
@@ -224,7 +224,7 @@ class Agent(BaseAgent):
             self.cur_model_name = model_file_path
             self.logger.info(f"load model {model_file_path} successfully")
 
-    @load_opponent_agent_wrapper
+    # @load_opponent_agent_wrapper
     def load_opponent_agent(self, id="1"):
         # Framework provides loading opponent agent function, no need to implement function content
         # 框架提供的加载对手模型功能，无需实现函数内容

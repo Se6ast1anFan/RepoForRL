@@ -19,9 +19,12 @@ from agent_ppo.feature.definition import (
 )
 from kaiwu_agent.utils.common_func import attached
 from agent_ppo.conf.conf import GameConfig
-from tools.env_conf_manager import EnvConfManager
+# from tools.env_conf_manager import EnvConfManager
 from tools.model_pool_utils import get_valid_model_pool
 from tools.metrics_utils import get_training_metrics
+
+from kaiwudrl.common.checkpoint.model_file_sync import ModelFileSync
+from tools.train_env_conf_validate import read_usr_conf, check_usr_conf
 
 
 @attached
@@ -31,13 +34,18 @@ def workflow(envs, agents, logger=None, monitor=None, *args, **kwargs):
     do_learns = [True, True]
     last_save_model_time = time.time()
 
+    # Directly pull and load the model file from the model pool.
+    # 直接从modelpool里拉取model文件加载
+    model_file_sync_wrapper = ModelFileSync()
+    model_file_sync_wrapper.make_local_model_dirs(logger)
+    """
     # Create environment configuration manager instance
     # 创建对局配置管理器实例
     env_conf_manager = EnvConfManager(
         config_path="agent_ppo/conf/train_env_conf.toml",
         logger=logger,
     )
-
+    """
     # Create EpisodeRunner instance
     # 创建 EpisodeRunner 实例
     episode_runner = EpisodeRunner(
@@ -47,11 +55,26 @@ def workflow(envs, agents, logger=None, monitor=None, *args, **kwargs):
         monitor=monitor,
         env_conf_manager=env_conf_manager,
     )
+    
+    # Read and validate configuration file
+    # 配置文件读取和校验
+    usr_conf = read_usr_conf("agent_ppo/conf/train_env_conf.toml", logger)
+    if usr_conf is None:
+        logger.error(f"usr_conf is None, please check agent_ppo/conf/train_env_conf.toml")
+        return
+    # check_usr_conf is a tool to check whether the environment configuration is correct
+    # It is recommended to perform a check before calling reset.env
+    # check_usr_conf会检查环境配置是否正确，建议调用reset.env前先检查一下
+    valid = check_usr_conf(usr_conf, logger)
+    if not valid:
+        logger.error(f"check_usr_conf return False, please check agent_ppo/conf/train_env_conf.toml")
+        return
 
     while True:
         # Run episodes and collect data
         # 运行对局并收集数据
-        for g_data in episode_runner.run_episodes():
+        # for g_data in episode_runner.run_episodes():
+        for g_data in run_episodes(envs, agents, logger, monitor, model_file_sync_wrapper, usr_conf):
             for index, (d_learn, agent) in enumerate(zip(do_learns, agents)):
                 if d_learn and len(g_data[index]) > 0:
                     # The learner trains in a while true loop, here learn actually sends samples
